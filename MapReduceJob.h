@@ -4,6 +4,7 @@
 #include <atomic>
 #include <thread>
 #include "MapReduceClient.h"
+#include <barrier>
 // you can add other includes here
 
 enum MapReduceStage
@@ -51,16 +52,31 @@ public:
 	OutputVec getOutput(void);
 
 private:
+	// get from user
+	const InputVec& inputVec;
+	const MapReduceClient &client;
+	int multiThreadLevel;
+
+	// working vectors
 	std::vector<std::thread> threads;
+	std::vector<IntermediateVec> intermediateVecs;
+	OutputVec globalOutputVec;
+
+	// the cool vars (atomic, mutex, barrier)
+	std::mutex outputMutex;
+	std::mutex _waitMutex;
+	std::atomic<uint64_t> _state;
+	std::atomic<uint32_t> mapCounter;
+	std::barrier<>* syncBarrier;
+
+	// function for the threads
 	void worker(int tid);
+
+	// function for state
 	void update_stage(void);
 	void update_total();
 	void set_proccesed(int value);
 	void update_proccesed();
-	std::atomic<uint64_t> _state;
-	std::mutex _waitMutex;
-	OutputVec _output;
-
 
 };
 	
