@@ -4,7 +4,7 @@ project(OS_second_project)
 set(CMAKE_CXX_STANDARD 20)
 
 add_executable(OS_second_project
-        upda
+        tests2/test_1-1_thread_1_process_updated.cpp
         MapContext.cpp
         MapReduceJob.cpp
         ReduceContext.cpp

@@ -17,7 +17,7 @@ void MapReduceJob::worker(int tid) {
     MapContext mapContext(intermediateVecs[tid]);
     while (true) {
         uint32_t index = mapCounter.fetch_add(1);
-        if (index > inputVec.size() - 1) {
+        if (index >= inputVec.size()) {
             break;
         }
         auto pair = inputVec[index];
@@ -130,19 +130,20 @@ MapReduceJob::MapReduceJob(const MapReduceClient &client, const InputVec &inputV
 
 MapReduceState MapReduceJob::getState(void) const
 {
-
     uint64_t current_state = _state.load();
     MapReduceStage new_stage = static_cast<MapReduceStage>(current_state >> 62);
 
     uint32_t processed = current_state & ((1ULL << 31) - 1);
     uint32_t total = (current_state >> 31) & ((1ULL << 31) - 1);
+
     double per = 0.0;
     if (total > 0) {
         per = (static_cast<double>(processed) / static_cast<double>(total)) * 100.0;
+    } else {
+        per = 100.0;
     }
 
     return {new_stage, per};
-
 }
 
 void MapReduceJob::wait(void)
