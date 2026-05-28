@@ -1,6 +1,7 @@
 #ifndef MAP_REDUCE_JOB_H
 #define MAP_REDUCE_JOB_H
 
+#include <atomic>
 #include "MapReduceClient.h"
 // you can add other includes here
 
@@ -49,9 +50,7 @@ public:
 	OutputVec getOutput(void);
 
 private:
-	/*
-		You can change everything on this part (these are just recommendations)
-	*/
+	std::atomic<uint64_t> _state;
 };
 	
 #endif // MAP_REDUCE_JOB_H
