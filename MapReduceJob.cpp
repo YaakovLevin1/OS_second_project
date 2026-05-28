@@ -9,6 +9,30 @@
 Implement:
 ===============================================
 */
+void MapReduceJob::update_stage(void) {
+    _state.fetch_add(1ULL << 62);
+}
+
+void MapReduceJob::update_total(void) {
+    _state.fetch_add(1ULL << 31);
+}
+
+void MapReduceJob::set_proccesed(int value) {
+    uint64_t current_state = _state.load();
+    uint64_t next_state;
+
+    do {
+        uint64_t cleared_state = current_state & ~((1ULL << 31) - 1);
+
+        next_state = cleared_state | (static_cast<uint64_t>(value) & ((1ULL << 31) - 1));
+
+    } while (!_state.compare_exchange_weak(current_state, next_state));
+}
+
+void MapReduceJob::update_proccesed(void) {
+    _state.fetch_add(1);
+}
+
 
 
 
@@ -94,8 +118,20 @@ MapReduceState MapReduceJob::getState(void) const
 
 void MapReduceJob::wait(void)
 {
-    // TODO: implement this function
+    _waitMutex.lock();
+    if (isDone())
+        return;
+
+
+    for (auto &thread : threads) {
+        if (thread.joinable()) {
+            thread.join();
+        }
+    }
+    _waitMutex.unlock();
 }
+
+
 
 OutputVec MapReduceJob::getOutput(void)
 {
@@ -104,10 +140,12 @@ OutputVec MapReduceJob::getOutput(void)
 
 bool MapReduceJob::isDone(void) const
 {
-    // TODO: implement this function
+    MapReduceState new_state = getState();
+    return (new_state.stage == REDUCE_STAGE && new_state.percentage >= 100);
+
 }
 
 MapReduceJob::~MapReduceJob()
 {
-    // TODO: implement this destructor
+    wait();
 }
