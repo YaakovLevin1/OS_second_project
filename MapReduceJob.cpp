@@ -136,7 +136,10 @@ void MapReduceJob::wait(void)
 OutputVec MapReduceJob::getOutput(void)
 {
     wait();
-
+    std::sort(globalOutputVec.begin(), globalOutputVec.end(), [](const OutputPair& a, const OutputPair& b) {
+        return *a.first < *b.first; // השוואה בין המפתחות (האיבר הראשון בצמד)
+    });
+    return globalOutputVec;
 }
 
 bool MapReduceJob::isDone(void) const
