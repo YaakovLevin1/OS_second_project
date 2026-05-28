@@ -1,6 +1,7 @@
 #ifndef MAP_REDUCE_JOB_H
 #define MAP_REDUCE_JOB_H
 
+#include <atomic>
 #include <thread>
 #include "MapReduceClient.h"
 // you can add other includes here
@@ -52,6 +53,7 @@ public:
 private:
 	std::vector<std::thread> threads;
 	void worker(int tid);
+	std::atomic<uint64_t> _state;
 };
 	
 #endif // MAP_REDUCE_JOB_H
