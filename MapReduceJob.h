@@ -59,6 +59,7 @@ private:
 	void update_proccesed();
 	std::atomic<uint64_t> _state;
 	std::mutex _waitMutex;
+	OutputVec _output;
 
 
 };

@@ -82,7 +82,8 @@ void MapReduceJob::wait(void)
 
 OutputVec MapReduceJob::getOutput(void)
 {
-    // TODO: implement this function
+    wait();
+
 }
 
 bool MapReduceJob::isDone(void) const
