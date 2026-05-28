@@ -9,7 +9,7 @@ void ReduceContext::addOutput(std::shared_ptr<K3> key, std::shared_ptr<V3> value
     outputMutex.lock();
 
     OutputPair data(key,value);
-    globalOutputVec.push_back(data);
+    globalOutputVec.emplace_back(std::move(key), std::move(value));
 
     outputMutex.unlock();
 }

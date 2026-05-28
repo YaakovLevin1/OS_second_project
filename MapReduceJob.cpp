@@ -1,14 +1,25 @@
 #include "MapReduceJob.h"
 
+#include <thread>
+
 /*
 ===============================================
 Implement:
 ===============================================
 */
 
+void MapReduceJob::worker(int tid) {
+
+}
+
 MapReduceJob::MapReduceJob(const MapReduceClient &client, const InputVec &inputVec, int multiThreadLevel)
 {
-    // TODO: implement this constructor
+
+    // create threads
+    for (int i = 0; i < multiThreadLevel; i++) {
+        threads.emplace_back(&MapReduceJob::worker, this, i);
+    }
+
 }
 
 MapReduceState MapReduceJob::getState(void) const
