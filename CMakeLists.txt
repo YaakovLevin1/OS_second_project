@@ -4,7 +4,7 @@ project(OS_second_project)
 set(CMAKE_CXX_STANDARD 20)
 
 add_executable(OS_second_project
-        tests2/test_1-1_thread_1_process_updated.cpp
+        tests/test02_is_done_after_wait.cpp
         MapContext.cpp
         MapReduceJob.cpp
         ReduceContext.cpp
