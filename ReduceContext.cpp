@@ -6,10 +6,6 @@ ReduceContext::ReduceContext(OutputVec& outputVec, std::mutex& mutex) : globalOu
 
 void ReduceContext::addOutput(std::shared_ptr<K3> key, std::shared_ptr<V3> value)
 {
-    outputMutex.lock();
-
-    OutputPair data(key,value);
+    std::lock_guard<std::mutex> lock(outputMutex); // RAII mutex
     globalOutputVec.emplace_back(std::move(key), std::move(value));
-
-    outputMutex.unlock();
 }

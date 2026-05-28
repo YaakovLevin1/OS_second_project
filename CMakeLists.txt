@@ -4,7 +4,10 @@ project(OS_second_project)
 set(CMAKE_CXX_STANDARD 20)
 
 add_executable(OS_second_project
+        upda
         MapContext.cpp
         MapReduceJob.cpp
         ReduceContext.cpp
 )
+
+target_include_directories(OS_second_project PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

@@ -11,7 +11,6 @@ void MapReduceJob::update_state(MapReduceStage stage, uint32_t total) {
 }
 
 
-
 void MapReduceJob::worker(int tid) {
 
     // stage 1 - map
@@ -148,18 +147,13 @@ MapReduceState MapReduceJob::getState(void) const
 
 void MapReduceJob::wait(void)
 {
-    _waitMutex.lock();
-    if (isDone()) {
-        _waitMutex.unlock();
-        return;
-    }
+    std::lock_guard<std::mutex> lock(_waitMutex); // RAII usage for safety
 
     for (auto &thread : threads) {
         if (thread.joinable()) {
             thread.join();
         }
     }
-    _waitMutex.unlock();
 }
 
 
