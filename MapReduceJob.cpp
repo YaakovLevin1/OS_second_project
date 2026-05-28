@@ -4,42 +4,17 @@
 #include <algorithm>
 #include <barrier>
 
-/*
-===============================================
-Implement:
-===============================================
-*/
-void MapReduceJob::update_stage(void) {
-    _state.fetch_add(1ULL << 62);
+
+void MapReduceJob::update_state(MapReduceStage stage, uint32_t total) {
+    uint64_t new_state = (static_cast<uint64_t>(stage) << 62) | (static_cast<uint64_t>(total) << 31);
+    _state.store(new_state);
 }
-
-void MapReduceJob::update_total(void) {
-    _state.fetch_add(1ULL << 31);
-}
-
-void MapReduceJob::set_proccesed(int value) {
-    uint64_t current_state = _state.load();
-    uint64_t next_state;
-
-    do {
-        uint64_t cleared_state = current_state & ~((1ULL << 31) - 1);
-
-        next_state = cleared_state | (static_cast<uint64_t>(value) & ((1ULL << 31) - 1));
-
-    } while (!_state.compare_exchange_weak(current_state, next_state));
-}
-
-void MapReduceJob::update_proccesed(void) {
-    _state.fetch_add(1);
-}
-
 
 
 
 void MapReduceJob::worker(int tid) {
-    // stage 1 - map
-    // TODO - update atomic stage
 
+    // stage 1 - map
     MapContext mapContext(intermediateVecs[tid]);
     while (true) {
         uint32_t index = mapCounter.fetch_add(1);
@@ -50,7 +25,7 @@ void MapReduceJob::worker(int tid) {
 
         client.map(pair.first, pair.second, mapContext);
 
-        // TODO - update percentage
+        _state.fetch_add(1);
     }
 
     // stage 2 - sort our intermediate vector
@@ -63,34 +38,89 @@ void MapReduceJob::worker(int tid) {
 
     syncBarrier->arrive_and_wait(); // wait to everyone
 
+
     // stage 3 - thread 0 show
-    // TODO - update atomic stage
     if (tid == 0) {
 
+        // update stage and proccesed
         uint32_t totalShuffleTasks = 0;
         for (const auto& vec : intermediateVecs) {
             totalShuffleTasks += vec.size();
         }
+        update_state(SHUFFLE_STAGE, totalShuffleTasks);
 
+        // shuffle
         while (true) {
+            K2* maxKey = nullptr;
 
+            for (auto& vec : intermediateVecs) {
+                if (!vec.empty()) {
+                    if (maxKey == nullptr || *maxKey < *(vec.back().first)) {
+                        maxKey = vec.back().first.get();
+                    }
+                }
+            }
+
+            if (maxKey == nullptr) {
+                break;
+            }
+
+            std::vector<IntermediatePair> currentKeyGroup;
+
+            for (auto& vec : intermediateVecs) {
+                while (!vec.empty()) {
+                    K2* currentKey = vec.back().first.get();
+
+                    if (!(*currentKey < *maxKey) && !(*maxKey < *currentKey)) {
+                        currentKeyGroup.push_back(vec.back());
+                        vec.pop_back();
+                    } else {
+                        break;
+                    }
+                }
+            }
+
+            shuffledQueue.push_back(currentKeyGroup);
+            _state.fetch_add(currentKeyGroup.size());
         }
-        // TODO - update atomic percentage
-
     }
+
     syncBarrier->arrive_and_wait(); // wait to thread 0
 
+
     // stage 4 - reduce
-    // TODO - update atomic stage
+    if (tid == 0) { // update stage and proccesed
+        uint32_t totalReduceTasks = 0;
+        for (const auto& group : shuffledQueue) {
+            totalReduceTasks += group.size();
+        }
+        update_state(REDUCE_STAGE, totalReduceTasks);
+    }
+    syncBarrier->arrive_and_wait(); // wait to thread 0
+    ReduceContext reduceContext(globalOutputVec, outputMutex);
+    while (true) {
+        uint32_t index = reduceCounter.fetch_add(1);
+        if (index >= shuffledQueue.size()) {
+            break;
+        }
+        auto& currentGroup = shuffledQueue[index];
+
+        client.reduce(currentGroup, reduceContext);
+
+        _state.fetch_add(currentGroup.size());
+    }
 
 
 }
 
 MapReduceJob::MapReduceJob(const MapReduceClient &client, const InputVec &inputVec, int multiThreadLevel) :
-    inputVec(inputVec), _state(0), intermediateVecs(multiThreadLevel), mapCounter(0), client(client), multiThreadLevel(multiThreadLevel)
+    inputVec(inputVec), _state(0), intermediateVecs(multiThreadLevel), mapCounter(0), client(client), multiThreadLevel(multiThreadLevel), reduceCounter(0)
 {
     // define barrier
     syncBarrier = new std::barrier<>(multiThreadLevel);
+
+    // define stage
+    update_state(MAP_STAGE, inputVec.size());
 
     // create threads
     for (int i = 0; i < multiThreadLevel; i++) {
@@ -119,9 +149,10 @@ MapReduceState MapReduceJob::getState(void) const
 void MapReduceJob::wait(void)
 {
     _waitMutex.lock();
-    if (isDone())
+    if (isDone()) {
+        _waitMutex.unlock();
         return;
-
+    }
 
     for (auto &thread : threads) {
         if (thread.joinable()) {
@@ -135,7 +166,13 @@ void MapReduceJob::wait(void)
 
 OutputVec MapReduceJob::getOutput(void)
 {
-    // TODO: implement this function
+    wait();
+    std::sort(globalOutputVec.begin(), globalOutputVec.end(),
+        [](const OutputPair& a, const OutputPair& b) {
+            return *(a.first) < *(b.first);
+        }
+    );
+    return globalOutputVec;
 }
 
 bool MapReduceJob::isDone(void) const
@@ -148,4 +185,5 @@ bool MapReduceJob::isDone(void) const
 MapReduceJob::~MapReduceJob()
 {
     wait();
+    delete syncBarrier;
 }

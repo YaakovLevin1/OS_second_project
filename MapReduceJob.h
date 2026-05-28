@@ -60,6 +60,7 @@ private:
 	// working vectors
 	std::vector<std::thread> threads;
 	std::vector<IntermediateVec> intermediateVecs;
+	std::vector<IntermediateVec> shuffledQueue;
 	OutputVec globalOutputVec;
 
 	// the cool vars (atomic, mutex, barrier)
@@ -68,15 +69,13 @@ private:
 	std::atomic<uint64_t> _state;
 	std::atomic<uint32_t> mapCounter;
 	std::barrier<>* syncBarrier;
+	std::atomic<uint32_t> reduceCounter;
 
 	// function for the threads
 	void worker(int tid);
 
-	// function for state
-	void update_stage(void);
-	void update_total();
-	void update_proccesed();
-	void set_proccesed(int value);
+	// function for stateS
+	void update_state(MapReduceStage stage, uint32_t total);
 
 };
 	
