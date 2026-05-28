@@ -64,19 +64,19 @@ private:
 
 	// the cool vars (atomic, mutex, barrier)
 	std::mutex outputMutex;
-	void worker(int tid);
-	void update_stage(void);
-	void update_total();
-	void set_proccesed(int value);
-	void update_proccesed();
+	std::mutex _waitMutex;
 	std::atomic<uint64_t> _state;
 	std::atomic<uint32_t> mapCounter;
 	std::barrier<>* syncBarrier;
 
 	// function for the threads
 	void worker(int tid);
-	std::mutex _waitMutex;
 
+	// function for state
+	void update_stage(void);
+	void update_total();
+	void update_proccesed();
+	void set_proccesed(int value);
 
 };
 	
