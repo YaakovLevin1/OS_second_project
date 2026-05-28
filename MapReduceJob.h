@@ -53,7 +53,14 @@ public:
 private:
 	std::vector<std::thread> threads;
 	void worker(int tid);
+	void update_stage(void);
+	void update_total();
+	void set_proccesed(int value);
+	void update_proccesed();
 	std::atomic<uint64_t> _state;
+	std::mutex _waitMutex;
+
+
 };
 	
 #endif // MAP_REDUCE_JOB_H
